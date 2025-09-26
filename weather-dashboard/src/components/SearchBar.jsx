@@ -1,28 +1,28 @@
 import { useState } from "react";
 
-export default function SearchBar({ onSearch, placeholder = "Enter city (e.g., London)" }) {
-  const [q, setQ] = useState("");
+export default function SearchBar({ onSearch }) {
+  const [query, setQuery] = useState("");
 
-  function submit(e) {
+  function handleSubmit(e) {
     e.preventDefault();
-    const trimmed = q.trim();
-    if (!trimmed) return;
-    onSearch(trimmed);
-    // optionally clear input: setQ("");
+    if (query.trim()) {
+      onSearch(query.trim());
+      setQuery("");
+    }
   }
 
   return (
-    <form onSubmit={submit} className="flex gap-2">
+    <form onSubmit={handleSubmit} className="flex gap-2">
       <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder={placeholder}
-        aria-label="Search city"
-        className="flex-1 px-4 py-2 rounded-md border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-400"
+        type="text"
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        placeholder="Search city..."
+        className="px-4 py-2 rounded border border-gray-300 flex-1"
       />
       <button
         type="submit"
-        className="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-500 transition"
+        className="px-4 py-2 rounded bg-sky-500 hover:bg-sky-600 text-white"
       >
         Search
       </button>

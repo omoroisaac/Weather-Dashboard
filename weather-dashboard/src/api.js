@@ -1,17 +1,38 @@
 const API_KEY = process.env.REACT_APP_OPENWEATHER_API_KEY;
 const BASE = "https://api.openweathermap.org/data/2.5";
 
-export async function fetchCurrentWeather(city) {
-  if (!API_KEY) throw new Error("Missing OpenWeather API key. Set REACT_APP_OPENWEATHER_API_KEY in .env.local");
-
+export async function fetchCurrentWeather(city, unit = "metric") {
   const res = await fetch(
-    `${BASE}/weather?q=${encodeURIComponent(city)}&units=metric&appid=${API_KEY}`
+    `${BASE}/weather?q=${encodeURIComponent(city)}&units=${unit}&appid=${API_KEY}`
   );
   const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch weather");
+  return data;
+}
 
-  // OpenWeather returns a `cod` field (200 on success) but sometimes as string.
-  if (!res.ok || (data.cod && +data.cod !== 200)) {
-    throw new Error(data.message || "Failed to fetch weather");
-  }
+export async function fetchForecast(city, unit = "metric") {
+  const res = await fetch(
+    `${BASE}/forecast?q=${encodeURIComponent(city)}&units=${unit}&appid=${API_KEY}`
+  );
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch forecast");
+  return data;
+}
+
+export async function fetchWeatherByCoords(lat, lon, unit = "metric") {
+  const res = await fetch(
+    `${BASE}/weather?lat=${lat}&lon=${lon}&units=${unit}&appid=${API_KEY}`
+  );
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch location weather");
+  return data;
+}
+
+export async function fetchForecastByCoords(lat, lon, unit = "metric") {
+  const res = await fetch(
+    `${BASE}/forecast?lat=${lat}&lon=${lon}&units=${unit}&appid=${API_KEY}`
+  );
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch location forecast");
   return data;
 }

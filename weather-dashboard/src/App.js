@@ -1,87 +1,97 @@
-import { useState, useEffect } from "react";
-import { fetchCurrentWeather } from "./api";
-import SearchBar from "./components/SearchBar";
+import { useState } from "react";
+import {
+  fetchCurrentWeather,
+  fetchForecast,
+  fetchWeatherByCoords,
+  fetchForecastByCoords,
+} from "./api";
 import WeatherCard from "./components/WeatherCard";
+import ForecastCard from "./components/ForecastCard";
+import SearchBar from "./components/SearchBar";
+import { getBackground } from "./utils/getBackground";
 
 function App() {
   const [weather, setWeather] = useState(null);
+  const [forecast, setForecast] = useState(null);
+  const [unit, setUnit] = useState(() => localStorage.getItem("unit") || "metric");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [recent, setRecent] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("recentWeatherSearches") || "[]");
-    } catch {
-      return [];
-    }
-  });
 
   async function handleSearch(city) {
     setError(null);
     setLoading(true);
     try {
-      const data = await fetchCurrentWeather(city);
+      const data = await fetchCurrentWeather(city, unit);
       setWeather(data);
-
-      // store recent (unique, keep most recent 5)
-      const label = `${data.name}${data.sys?.country ? `,${data.sys.country}` : ""}`;
-      setRecent(prev => {
-        const next = [label, ...prev.filter(x => x !== label)].slice(0, 5);
-        localStorage.setItem("recentWeatherSearches", JSON.stringify(next));
-        return next;
-      });
+      const forecastData = await fetchForecast(city, unit);
+      setForecast(forecastData);
     } catch (err) {
-      setError(err.message || "Could not fetch weather");
-      setWeather(null);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   }
 
-  function handleRecentClick(label) {
-    // label format: "City,COUNTRY" or "City"
-    const city = label.split(",")[0];
-    handleSearch(city);
+  function toggleUnit() {
+    const next = unit === "metric" ? "imperial" : "metric";
+    setUnit(next);
+    localStorage.setItem("unit", next);
+    if (weather) handleSearch(weather.name);
+  }
+
+  function handleGeolocation() {
+    if (!navigator.geolocation) {
+      setError("Geolocation not supported");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(async pos => {
+      try {
+        setLoading(true);
+        const { latitude, longitude } = pos.coords;
+        const data = await fetchWeatherByCoords(latitude, longitude, unit);
+        setWeather(data);
+        const forecastData = await fetchForecastByCoords(latitude, longitude, unit);
+        setForecast(forecastData);
+      } catch (err) {
+        setError("Could not fetch weather for location");
+      } finally {
+        setLoading(false);
+      }
+    });
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-start justify-center py-12 px-4">
-      <div className="w-full max-w-3xl">
-        <header className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-800">Weather Dashboard</h1>
-          <p className="text-slate-600">Search current weather by city (OpenWeatherMap)</p>
+    <div
+      className={`min-h-screen flex items-start justify-center py-12 px-4 transition-colors duration-500 ${
+        weather ? getBackground(weather.weather[0].main) : "bg-slate-50"
+      }`}
+    >
+      <div className="w-full max-w-lg">
+        <header className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Weather Dashboard</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={toggleUnit}
+              className="px-3 py-1 rounded bg-sky-100 hover:bg-sky-200 text-sky-700"
+            >
+              {unit === "metric" ? "Show °F" : "Show °C"}
+            </button>
+            <button
+              onClick={handleGeolocation}
+              className="px-3 py-1 rounded bg-green-100 hover:bg-green-200 text-green-700"
+            >
+              My Location
+            </button>
+          </div>
         </header>
 
         <SearchBar onSearch={handleSearch} />
 
-        <div className="mt-6">
-          {loading && (
-            <div className="flex items-center gap-3 text-slate-700">
-              <div className="inline-block animate-spin border-4 border-slate-300 border-t-slate-600 rounded-full w-6 h-6" />
-              Loading...
-            </div>
-          )}
+        {loading && <p className="mt-6 text-gray-700">Loading...</p>}
+        {error && <p className="mt-6 text-red-500">{error}</p>}
 
-          {error && <div className="text-red-600">{error}</div>}
-
-          {weather && <WeatherCard weather={weather} />}
-        </div>
-
-        {recent.length > 0 && (
-          <div className="mt-6">
-            <h2 className="text-sm font-semibold mb-2">Recent searches</h2>
-            <div className="flex gap-2 flex-wrap">
-              {recent.map((r) => (
-                <button
-                  key={r}
-                  onClick={() => handleRecentClick(r)}
-                  className="px-3 py-1 bg-white rounded shadow-sm text-sm hover:bg-slate-50 transition"
-                >
-                  {r.split(",")[0]}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {weather && <WeatherCard weather={weather} unit={unit} />}
+        {forecast && <ForecastCard forecast={forecast} unit={unit} />}
       </div>
     </div>
   );
