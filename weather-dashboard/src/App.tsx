@@ -7,72 +7,84 @@ import { WeatherAlerts } from './components/WeatherAlerts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
 
-// Mock data
-const mockWeatherData = {
-  location: "London",
-  country: "United Kingdom",
-  temperature: 18,
-  condition: "Partly Cloudy",
-  humidity: 65,
-  windSpeed: 12,
-  visibility: 10,
-  feelsLike: 20,
-  uvIndex: 4,
-};
+// 🌦️ Replace this with your OpenWeatherMap API key
+const API_KEY = "6fdaa89d77712ccd797e0a955a4b810a";
 
-const mockForecast = [
-  { day: "Today", date: "Sep 26", condition: "Partly Cloudy", high: 18, low: 12, precipitation: 20 },
-  { day: "Fri", date: "Sep 27", condition: "Rainy", high: 16, low: 10, precipitation: 80 },
-  { day: "Sat", date: "Sep 28", condition: "Sunny", high: 22, low: 14, precipitation: 5 },
-  { day: "Sun", date: "Sep 29", condition: "Cloudy", high: 19, low: 13, precipitation: 30 },
-  { day: "Mon", date: "Sep 30", condition: "Partly Cloudy", high: 21, low: 15, precipitation: 15 },
-  { day: "Tue", date: "Oct 1", condition: "Sunny", high: 24, low: 16, precipitation: 0 },
-  { day: "Wed", date: "Oct 2", condition: "Rainy", high: 17, low: 11, precipitation: 90 },
-];
+// Fetch function for current + forecast data
+async function fetchWeatherData(city: string) {
+  const currentURL = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`;
+  const forecastURL = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=metric`;
 
-const mockHourlyData = [
-  { time: "00:00", temperature: 15, humidity: 68, windSpeed: 8 },
-  { time: "03:00", temperature: 13, humidity: 72, windSpeed: 6 },
-  { time: "06:00", temperature: 12, humidity: 75, windSpeed: 5 },
-  { time: "09:00", temperature: 16, humidity: 62, windSpeed: 10 },
-  { time: "12:00", temperature: 18, humidity: 58, windSpeed: 12 },
-  { time: "15:00", temperature: 20, humidity: 55, windSpeed: 15 },
-  { time: "18:00", temperature: 19, humidity: 60, windSpeed: 13 },
-  { time: "21:00", temperature: 17, humidity: 65, windSpeed: 11 },
-];
+  const [currentRes, forecastRes] = await Promise.all([
+    fetch(currentURL),
+    fetch(forecastURL),
+  ]);
 
-const mockAlerts = [
-  {
-    id: "1",
-    type: "warning" as const,
-    title: "Heavy Rain Warning",
-    description: "Heavy rainfall expected between 14:00 and 18:00 today. Possible flooding in low-lying areas.",
-    severity: "medium" as const,
-    expiresAt: "Today at 18:00"
-  },
-  {
-    id: "2",
-    type: "advisory" as const,
-    title: "Wind Advisory",
-    description: "Strong winds up to 45 km/h expected this evening.",
-    severity: "low" as const,
-    expiresAt: "Tomorrow at 06:00"
+  if (!currentRes.ok || !forecastRes.ok) {
+    throw new Error("Failed to fetch weather data");
   }
-];
+
+  const current = await currentRes.json();
+  const forecast = await forecastRes.json();
+
+  // Map current weather
+  const currentWeather = {
+    location: current.name,
+    country: current.sys.country,
+    temperature: current.main.temp,
+    condition: current.weather[0].main,
+    humidity: current.main.humidity,
+    windSpeed: current.wind.speed,
+    visibility: current.visibility / 1000,
+    feelsLike: current.main.feels_like,
+    uvIndex: 0, // placeholder since free tier doesn't include UV
+  };
+
+  // Map forecast (every 8th item ≈ one per day)
+  const dailyForecast = forecast.list
+    .filter((_: any, index: number) => index % 8 === 0)
+    .map((item: any) => ({
+      day: new Date(item.dt * 1000).toLocaleDateString("en-US", { weekday: "short" }),
+      date: new Date(item.dt * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      condition: item.weather[0].main,
+      high: item.main.temp_max,
+      low: item.main.temp_min,
+      precipitation: Math.round(item.pop * 100),
+    }));
+
+  // Map hourly data for chart (next 8 intervals ≈ next 24h)
+  const hourlyData = forecast.list.slice(0, 8).map((item: any) => ({
+    time: new Date(item.dt * 1000).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+    temperature: item.main.temp,
+    humidity: item.main.humidity,
+    windSpeed: item.wind.speed,
+  }));
+
+  return { currentWeather, dailyForecast, hourlyData };
+}
 
 export default function App() {
-  const [selectedCity, setSelectedCity] = useState(mockWeatherData.location);
-  const [weatherData, setWeatherData] = useState(mockWeatherData);
+  const [selectedCity, setSelectedCity] = useState("London");
+  const [weatherData, setWeatherData] = useState<any>(null);
+  const [forecast, setForecast] = useState<any[]>([]);
+  const [hourly, setHourly] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleCitySelect = (city: { name: string; country: string; region: string }) => {
+  const handleCitySelect = async (city: { name: string; country: string; region: string }) => {
     setSelectedCity(city.name);
-    // In a real app, you would fetch new weather data here
-    // For now, we'll just update the location
-    setWeatherData({
-      ...weatherData,
-      location: city.name,
-      country: city.country,
-    });
+    setIsLoading(true);
+
+    try {
+      const { currentWeather, dailyForecast, hourlyData } = await fetchWeatherData(city.name);
+      setWeatherData(currentWeather);
+      setForecast(dailyForecast);
+      setHourly(hourlyData);
+    } catch (error) {
+      console.error(error);
+      alert("Could not load weather data for " + city.name);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -102,35 +114,57 @@ export default function App() {
           <CitySearch onCitySelect={handleCitySelect} currentCity={selectedCity} />
         </div>
 
-        {/* Current Weather */}
-        <WeatherCard data={weatherData} />
+        {/* Loading or Weather Data */}
+        {isLoading ? (
+          <p className="text-center text-muted-foreground">Fetching weather data...</p>
+        ) : weatherData ? (
+          <>
+            <WeatherCard data={weatherData} />
 
-        {/* Alerts */}
-        <WeatherAlerts alerts={mockAlerts} />
+            {/* Alerts (can later be real) */}
+            <WeatherAlerts
+              alerts={[
+                {
+                  id: "1",
+                  type: "info",
+                  title: "Data updated",
+                  description: `Latest weather data for ${selectedCity}`,
+                  severity: "low",
+                  expiresAt: "",
+                },
+              ]}
+            />
 
-        {/* Charts and Forecast */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <ForecastCard forecast={mockForecast} />
-          
-          <div className="space-y-6">
-            <Tabs defaultValue="temperature" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="temperature">Temperature</TabsTrigger>
-                <TabsTrigger value="humidity">Humidity</TabsTrigger>
-                <TabsTrigger value="wind">Wind</TabsTrigger>
-              </TabsList>
-              <TabsContent value="temperature">
-                <WeatherChart hourlyData={mockHourlyData} type="temperature" />
-              </TabsContent>
-              <TabsContent value="humidity">
-                <WeatherChart hourlyData={mockHourlyData} type="humidity" />
-              </TabsContent>
-              <TabsContent value="wind">
-                <WeatherChart hourlyData={mockHourlyData} type="wind" />
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
+            {/* Charts and Forecast */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <ForecastCard forecast={forecast} />
+
+              <div className="space-y-6">
+                <Tabs defaultValue="temperature" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="temperature">Temperature</TabsTrigger>
+                    <TabsTrigger value="humidity">Humidity</TabsTrigger>
+                    <TabsTrigger value="wind">Wind</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="temperature">
+                    <WeatherChart hourlyData={hourly} type="temperature" />
+                  </TabsContent>
+                  <TabsContent value="humidity">
+                    <WeatherChart hourlyData={hourly} type="humidity" />
+                  </TabsContent>
+                  <TabsContent value="wind">
+                    <WeatherChart hourlyData={hourly} type="wind" />
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="text-center text-muted-foreground">
+            Search for a city to view weather data.
+          </p>
+        )}
       </div>
     </div>
   );
