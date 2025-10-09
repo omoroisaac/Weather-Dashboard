@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { WeatherCard } from './components/WeatherCard';
 import { ForecastCard } from './components/ForecastCard';
 import { WeatherChart } from './components/WeatherChart';
@@ -7,83 +7,60 @@ import { WeatherAlerts } from './components/WeatherAlerts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { ImageWithFallback } from './components/figma/ImageWithFallback';
 
-// Use environment variable for API key
-const API_KEY = process.env.REACT_APP_OPENWEATHER_API_KEY || "6fdaa89d77712ccd797e0a955a4b810a";
+// 🌦️ Replace this with your OpenWeatherMap API key
+const API_KEY = "6fdaa89d77712ccd797e0a955a4b810a";
 
 // Fetch function for current + forecast data
 async function fetchWeatherData(city: string) {
-  // Add input validation
-  if (!city || city.trim() === '') {
-    throw new Error("City name is required");
+  const currentURL = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`;
+  const forecastURL = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=metric`;
+
+  const [currentRes, forecastRes] = await Promise.all([
+    fetch(currentURL),
+    fetch(forecastURL),
+  ]);
+
+  if (!currentRes.ok || !forecastRes.ok) {
+    throw new Error("Failed to fetch weather data");
   }
 
-  const currentURL = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric`;
-  const forecastURL = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric`;
+  const current = await currentRes.json();
+  const forecast = await forecastRes.json();
 
-  try {
-    const [currentRes, forecastRes] = await Promise.all([
-      fetch(currentURL),
-      fetch(forecastURL),
-    ]);
+  // Map current weather
+  const currentWeather = {
+    location: current.name,
+    country: current.sys.country,
+    temperature: current.main.temp,
+    condition: current.weather[0].main,
+    humidity: current.main.humidity,
+    windSpeed: current.wind.speed,
+    visibility: current.visibility / 1000,
+    feelsLike: current.main.feels_like,
+    uvIndex: 0, // placeholder since free tier doesn't include UV
+  };
 
-    if (!currentRes.ok) {
-      throw new Error(`Current weather fetch failed: ${currentRes.status} ${currentRes.statusText}`);
-    }
-    
-    if (!forecastRes.ok) {
-      throw new Error(`Forecast fetch failed: ${forecastRes.status} ${forecastRes.statusText}`);
-    }
-
-    const current = await currentRes.json();
-    const forecast = await forecastRes.json();
-
-    // Validate API response
-    if (current.cod !== 200) {
-      throw new Error(current.message || "Failed to fetch current weather");
-    }
-
-    if (forecast.cod !== "200") {
-      throw new Error(forecast.message || "Failed to fetch forecast");
-    }
-
-    // Map current weather
-    const currentWeather = {
-      location: current.name,
-      country: current.sys.country,
-      temperature: current.main.temp,
-      condition: current.weather[0].main,
-      humidity: current.main.humidity,
-      windSpeed: current.wind.speed,
-      visibility: current.visibility / 1000,
-      feelsLike: current.main.feels_like,
-      uvIndex: 0,
-    };
-
-    // Map forecast (every 8th item ≈ one per day)
-    const dailyForecast = forecast.list
-      .filter((_: any, index: number) => index % 8 === 0)
-      .map((item: any) => ({
-        day: new Date(item.dt * 1000).toLocaleDateString("en-US", { weekday: "short" }),
-        date: new Date(item.dt * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        condition: item.weather[0].main,
-        high: item.main.temp_max,
-        low: item.main.temp_min,
-        precipitation: Math.round(item.pop * 100),
-      }));
-
-    // Map hourly data for chart (next 8 intervals ≈ next 24h)
-    const hourlyData = forecast.list.slice(0, 8).map((item: any) => ({
-      time: new Date(item.dt * 1000).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-      temperature: item.main.temp,
-      humidity: item.main.humidity,
-      windSpeed: item.wind.speed,
+  // Map forecast (every 8th item ≈ one per day)
+  const dailyForecast = forecast.list
+    .filter((_: any, index: number) => index % 8 === 0)
+    .map((item: any) => ({
+      day: new Date(item.dt * 1000).toLocaleDateString("en-US", { weekday: "short" }),
+      date: new Date(item.dt * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      condition: item.weather[0].main,
+      high: item.main.temp_max,
+      low: item.main.temp_min,
+      precipitation: Math.round(item.pop * 100),
     }));
 
-    return { currentWeather, dailyForecast, hourlyData };
-  } catch (error) {
-    console.error('Fetch weather data error:', error);
-    throw error;
-  }
+  // Map hourly data for chart (next 8 intervals ≈ next 24h)
+  const hourlyData = forecast.list.slice(0, 8).map((item: any) => ({
+    time: new Date(item.dt * 1000).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+    temperature: item.main.temp,
+    humidity: item.main.humidity,
+    windSpeed: item.wind.speed,
+  }));
+
+  return { currentWeather, dailyForecast, hourlyData };
 }
 
 export default function App() {
@@ -92,32 +69,22 @@ export default function App() {
   const [forecast, setForecast] = useState<any[]>([]);
   const [hourly, setHourly] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch data when component mounts and when selectedCity changes
-  useEffect(() => {
-    const loadInitialData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const { currentWeather, dailyForecast, hourlyData } = await fetchWeatherData(selectedCity);
-        setWeatherData(currentWeather);
-        setForecast(dailyForecast);
-        setHourly(hourlyData);
-      } catch (err) {
-        console.error('Failed to load initial weather data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load weather data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadInitialData();
-  }, [selectedCity]);
 
   const handleCitySelect = async (city: { name: string; country: string; region: string }) => {
     setSelectedCity(city.name);
-    // The useEffect will handle the data fetching
+    setIsLoading(true);
+
+    try {
+      const { currentWeather, dailyForecast, hourlyData } = await fetchWeatherData(city.name);
+      setWeatherData(currentWeather);
+      setForecast(dailyForecast);
+      setHourly(hourlyData);
+    } catch (error) {
+      console.error(error);
+      alert("Could not load weather data for " + city.name);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -128,7 +95,6 @@ export default function App() {
           src="https://images.unsplash.com/photo-1757911012798-e387bb080967?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3ZWF0aGVyJTIwY2xvdWRzJTIwc2t5JTIwYXRtb3NwaGVyaWN8ZW58MXx8fHwxNzU4ODgwMjA3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
           alt="Weather background"
           className="absolute inset-0 w-full h-full object-cover"
-          fallback={<div className="absolute inset-0 bg-blue-400" />}
         />
         <div className="absolute inset-0 bg-black/30" />
         <div className="relative z-10 flex items-center justify-center h-full">
@@ -148,23 +114,14 @@ export default function App() {
           <CitySearch onCitySelect={handleCitySelect} currentCity={selectedCity} />
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="max-w-2xl mx-auto p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-800 text-center">Error: {error}</p>
-          </div>
-        )}
-
         {/* Loading or Weather Data */}
         {isLoading ? (
-          <div className="text-center text-muted-foreground">
-            <p>Fetching weather data for {selectedCity}...</p>
-          </div>
+          <p className="text-center text-muted-foreground">Fetching weather data...</p>
         ) : weatherData ? (
           <>
             <WeatherCard data={weatherData} />
 
-            {/* Alerts */}
+            {/* Alerts (can later be real) */}
             <WeatherAlerts
               alerts={[
                 {
@@ -204,11 +161,9 @@ export default function App() {
             </div>
           </>
         ) : (
-          !isLoading && !error && (
-            <p className="text-center text-muted-foreground">
-              Search for a city to view weather data.
-            </p>
-          )
+          <p className="text-center text-muted-foreground">
+            Search for a city to view weather data.
+          </p>
         )}
       </div>
     </div>
