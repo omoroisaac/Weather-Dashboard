@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gradient-to-br from-blue-400 to-blue-600 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">Weather Dashboard</h1>
+            <p class="text-blue-100">Get real-time weather information for any city</p>
+        </header>
+
+        <!-- Search Section -->
+        <div class="max-w-md mx-auto mb-8">
+            <div class="flex gap-2">
+                <input 
+                    type="text" 
+                    id="cityInput"
+                    placeholder="Enter city name..." 
+                    class="flex-1 px-4 py-3 rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                <button 
+                    id="searchBtn"
+                    class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white"
+                >
+                    Search
+                </button>
+            </div>
+            <div id="errorMessage" class="text-red-200 text-sm mt-2 hidden"></div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="text-center hidden">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            <p class="text-white mt-2">Loading weather data...</p>
+        </div>
+
+        <!-- Weather Display -->
+        <div id="weatherDisplay" class="max-w-lg mx-auto bg-white rounded-xl shadow-lg overflow-hidden hidden">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 id="cityName" class="text-2xl font-bold text-gray-800"></h2>
+                        <p id="currentDate" class="text-gray-600"></p>
+                    </div>
+                    <div id="weatherIcon" class="text-4xl"></div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="text-center p-4 bg-blue-50 rounded-lg">
+                        <p class="text-gray-600">Temperature</p>
+                        <p id="temperature" class="text-3xl font-bold text-gray-800"></p>
+                    </div>
+                    <div class="text-center p-4 bg-blue-50 rounded-lg">
+                        <p class="text-gray-600">Humidity</p>
+                        <p id="humidity" class="text-3xl font-bold text-gray-800"></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="text-center p-4 bg-blue-50 rounded-lg">
+                        <p class="text-gray-600">Wind Speed</p>
+                        <p id="windSpeed" class="text-3xl font-bold text-gray-800"></p>
+                    </div>
+                    <div class="text-center p-4 bg-blue-50 rounded-lg">
+                        <p class="text-gray-600">Feels Like</p>
+                        <p id="feelsLike" class="text-3xl font-bold text-gray-800"></p>
+                    </div>
+                </div>
+
+                <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <p id="weatherDescription" class="text-center text-gray-700 font-medium"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Searches -->
+        <div id="recentSearches" class="max-w-lg mx-auto mt-8 hidden">
+            <h3 class="text-white text-lg font-semibold mb-4">Recent Searches</h3>
+            <div id="recentList" class="flex flex-wrap gap-2"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
