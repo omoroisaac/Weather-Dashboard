@@ -1,7 +1,7 @@
 // script.js
 class WeatherDashboard {
     constructor() {
-        this.apiKey = 'YOUR_API_KEY_HERE'; // You'll need to get this from OpenWeatherMap
+        this.apiKey = '6fdaa89d77712ccd797e0a955a4b810a'; // You'll need to get this from OpenWeatherMap
         this.baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
         this.recentSearches = JSON.parse(localStorage.getItem('recentSearches')) || [];
         
