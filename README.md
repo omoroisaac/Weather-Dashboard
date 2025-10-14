@@ -233,8 +233,95 @@ Your site is live!
 
 🐛 Troubleshooting
 Common Issues
+API Key Errors
 
+text
+Error: Invalid API key. Please check your configuration.
+Solution: Verify your OpenWeatherMap API key is correct and active
 
-⚡ Fast Loading: Minimal loading times with efficient API calls
+City Not Found
 
-🎯 Intuitive Interface: Clean, modern design with Tailwind CSS
+text
+Error: City not found. Please check the spelling.
+Solution: Check city name spelling and try different variations
+
+CORS Errors
+
+Solution: Netlify deployment handles CORS automatically
+
+Slow Loading
+
+Solution: Check internet connection and API status
+
+Debug Mode
+Add this to your browser console for detailed logs:
+javascript
+localStorage.setItem('debug', 'true');
+🤝 Contributing
+We welcome contributions! Here's how you can help:
+
+Fork the repository
+
+Create a feature branch
+bash
+git checkout -b feature/amazing-feature
+Commit your changes
+
+bash
+git commit -m 'Add amazing feature'
+Push to the branch
+
+bash
+git push origin feature/amazing-feature
+Open a Pull Request
+
+Development Setup
+bash
+# Install live server for development
+npm install -g live-server
+
+# Start development server
+live-server --port=3000
+📄 License
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+🙏 Acknowledgments
+OpenWeatherMap for providing reliable weather data API
+
+Tailwind CSS for the excellent utility-first CSS framework
+
+Netlify for seamless deployment and hosting
+
+Contributors who help improve this project
+
+📞 Support
+If you need help with this project:
+
+Check the troubleshooting section above
+
+Open an issue on GitHub
+
+Contact the maintainers for critical issues
+
+🔮 Future Enhancements
+5-day weather forecast
+
+Geolocation-based weather
+
+Weather maps integration
+
+Temperature unit toggle (C/F)
+
+Multiple city comparison
+
+Weather alerts and notifications
+
+PWA (Progressive Web App) capabilities
+
+Dark/Light theme toggle
+
+Built with ❤️ using modern web technologies
+
+Happy weather tracking! 🌈
+
+Auther; Omorowange Isaac 
